@@ -32,7 +32,7 @@ jobs:
         run: |
           coverage=$(cat "${{ env.COVERAGE_DIR}}/index.html")
           echo $coverage
-          echo "coverage=$coverage" >> "$GITHUB_OUTPUT"
+          echo "coverage=hogehoge" >> "$GITHUB_OUTPUT"
 
       - name: Comment coverage
         uses: marocchino/sticky-pull-request-comment@v2
