@@ -27,5 +27,7 @@ jobs:
       - name: Coverage report
         run: lein cloverage -o "${{ env.COVERAGE_DIR }}"
 
-      - name: Post coverage
-        run: cat "${{ env.COVERAGE_DIR }}/index.html"
+      - name: Comment coverage
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          path: "${{ env.COVERAGE_DIR }}/index.html"
