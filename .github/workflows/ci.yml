@@ -1,7 +1,6 @@
 name: CI
 
 on:
-  push:
   pull_request:
 
 env:
@@ -30,7 +29,10 @@ jobs:
 
       - name: Read coverage html
         id: coverage-read
-        run: echo "coverage=$(cat ${{ env.COVERAGE_DIR}}/index.html)" >> "$GITHUB_OUTPUT"
+        run: |
+          coverage=$(cat "${{ env.COVERAGE_DIR}}/index.html")
+          echo $coverage
+          echo "coverage=$coverage" >> "$GITHUB_OUTPUT"
 
       - name: Comment coverage
         uses: marocchino/sticky-pull-request-comment@v2
