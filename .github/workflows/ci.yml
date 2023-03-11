@@ -27,15 +27,7 @@ jobs:
       - name: Coverage report
         run: lein cloverage -o "${{ env.COVERAGE_DIR }}"
 
-      - name: Read coverage html
-        id: coverage-read
-        run: |
-          coverage=$(cat "${{ env.COVERAGE_DIR}}/index.html")
-          echo $coverage
-          echo "coverage=hogehoge" >> "$GITHUB_OUTPUT"
-
       - name: Comment coverage
         uses: marocchino/sticky-pull-request-comment@v2
         with:
-          message: |
-            ${{ steps.coverage-read.outputs.coverage }}
+          path: "${{ env.COVERAGE_DIR }}/index.html"
