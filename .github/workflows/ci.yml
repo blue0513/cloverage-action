@@ -33,4 +33,5 @@ jobs:
 
       - uses: actions/upload-artifact@v3
         with:
+          name: test-coverage
           path: "${{ env.COVERAGE_DIR }}"
