@@ -1,0 +1,7 @@
+(ns calc-test
+  (:require [clojure.test :refer :all]
+            [calc :as c]))
+
+(deftest sum-test
+  (is (= 3 (c/sum 1 2)))
+  (is (= 3 (c/sum 2 1))))
