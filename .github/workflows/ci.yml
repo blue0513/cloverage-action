@@ -3,6 +3,9 @@ name: CI
 on:
   push:
 
+env:
+  COVERAGE_DIR: "target/coverage"
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -17,5 +20,12 @@ jobs:
         uses: DeLaGuardo/setup-clojure@10.2
         with:
           lein: 2.9.8
+
       - name: Test
         run: lein test
+
+      - name: Coverage report
+        run: lein cloverage -o "${{ env.COVERAGE_DIR }}"
+
+      - name: Post coverage
+        run: cat "${{ env.COVERAGE_DIR }}/index.html"
