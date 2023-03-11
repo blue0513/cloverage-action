@@ -11,18 +11,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+
       - name: Prepare java
         uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
           java-version: '8'
+
       - name: Install clojure tools
         uses: DeLaGuardo/setup-clojure@10.2
         with:
           lein: 2.9.8
-
-      - name: Test
-        run: lein test
 
       - name: Coverage report
         run: lein cloverage -o "${{ env.COVERAGE_DIR }}"
@@ -31,3 +30,7 @@ jobs:
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           path: "${{ env.COVERAGE_DIR }}/index.html"
+
+      - uses: actions/upload-artifact@v3
+        with:
+          path: "${{ env.COVERAGE_DIR }}"
