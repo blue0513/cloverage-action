@@ -34,7 +34,7 @@ jobs:
         run: |
           cat coverage-report.log | sed -n '/Writing HTML report to/,$p' | sed '1,2d' > branch.log
           echo "diff<<EOF" >> $GITHUB_OUTPUT
-          echo "foobar" >> $GITHUB_OUTPUT
+          echo $(diff --suppress-common-lines branch.log master.log) >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Comment coverage
