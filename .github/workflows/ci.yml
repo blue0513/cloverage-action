@@ -24,7 +24,7 @@ jobs:
       - name: Coverage report
         id: report-coverage
         run: |
-          lein cloverage -o "${{ env.COVERAGE_DIR }}" > coverage-report.log
+          lein cloverage --no-colorize -o "${{ env.COVERAGE_DIR }}" > coverage-report.log
 
       - name: Diff coverage
         id: diff-coverage
