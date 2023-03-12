@@ -1,7 +1,7 @@
 name: CI
 
 on:
-  push:
+  pull_request:
 
 env:
   COVERAGE_DIR: "target/coverage"
@@ -20,9 +20,6 @@ jobs:
         uses: DeLaGuardo/setup-clojure@10.2
         with:
           lein: 2.9.8
-
-      - name: Test
-        run: lein test
 
       - name: Coverage report
         id: report-coverage
