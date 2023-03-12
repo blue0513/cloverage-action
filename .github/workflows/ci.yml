@@ -27,14 +27,15 @@ jobs:
       - name: Coverage report
         id: report-coverage
         run: |
-          lein cloverage -o "${{ env.COVERAGE_DIR }}" > result.log
-          echo "result=$(cat result.log)" >> "$GITHUB_OUTPUT"
+          lein cloverage -o "${{ env.COVERAGE_DIR }}" > coverage-report.log
 
       - name: Diff coverage
         id: diff-coverage
         run: |
-          cat ${{ steps.report-coverage.outputs.result }} | sed -n '/Writing HTML report to/,$p' | sed '1,2d' > branch.log
-          echo "diff=$(diff --suppress-common-lines branch.log master.log)" > "$GITHUB_OUTPUT"
+          cat coverage-report.log | sed -n '/Writing HTML report to/,$p' | sed '1,2d' > branch.log
+          echo "diff<<EOF" >> $GITHUB_OUTPUT
+          diff --suppress-common-lines branch.log master.log >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Comment coverage
         uses: marocchino/sticky-pull-request-comment@v2
