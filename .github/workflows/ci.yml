@@ -30,10 +30,10 @@ jobs:
         id: diff-coverage
         run: |
           cat coverage-report.log | sed -n '/Writing HTML report to/,$p' | sed '1,2d' > branch.log
-          echo "```diff" >> diff.log
+          echo "\`\`\`diff" >> diff.log
           diff --suppress-common-lines --color='never' branch.log master.log >> diff.log
-          echo "```" >> diff.log
-          cat diff.log          
+          echo "\`\`\`" >> diff.log
+          cat diff.log
 
       - name: Comment coverage
         uses: marocchino/sticky-pull-request-comment@v2
