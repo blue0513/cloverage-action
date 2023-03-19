@@ -1,3 +1,8 @@
 target/
 .cpcache/
 .lein-failures
+
+*.log
+*.png
+
+!dev-resources/*

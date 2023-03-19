@@ -1,7 +1,7 @@
 name: CI
 
 on:
-  push:
+  pull_request:
 
 env:
   COVERAGE_DIR: "target/coverage"
@@ -11,23 +11,36 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Prepare java
-        uses: actions/setup-java@v3
+
+      # Prepare library
+
+      - uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
           java-version: '8'
-      - name: Install clojure tools
-        uses: DeLaGuardo/setup-clojure@10.2
+      - uses: DeLaGuardo/setup-clojure@10.2
         with:
           lein: 2.9.8
 
-      - name: Test
-        run: lein test
+      # Coverage
 
       - name: Coverage report
-        run: lein cloverage -o "${{ env.COVERAGE_DIR }}"
+        id: report-coverage
+        run: |
+          lein cloverage --no-colorize -o "${{ env.COVERAGE_DIR }}" > coverage-report.log
+
+      - name: Diff coverage
+        id: diff-coverage
+        run: |
+          cat coverage-report.log | sed -n '/Writing HTML report to/,$p' | sed '1,2d' > branch.log
+          echo '```diff' > diff.log
+          diff --suppress-common-lines --color='never' branch.log dev-resources/master.log >> diff.log || true
+          echo '```' >> diff.log
+          cat diff.log
+
+      # Post comment
 
       - name: Comment coverage
         uses: marocchino/sticky-pull-request-comment@v2
         with:
-          path: "${{ env.COVERAGE_DIR }}/index.html"
+          path: diff.log
