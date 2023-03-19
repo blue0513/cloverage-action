@@ -15,5 +15,5 @@ env:
 
 jobs:
   test:
-    uses: blue0513/cloverage-action/.github/workflows/ci.yml@feature/reusable-workflow
+    uses: blue0513/cloverage-action/.github/workflows/ci.yml@main
     secrets: inherit
