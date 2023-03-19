@@ -36,7 +36,7 @@ jobs:
         with:
           lein: 2.9.8
 
-      # # Coverage
+      # Coverage
 
       - name: Coverage report
         id: report-coverage
@@ -48,18 +48,18 @@ jobs:
         id: diff-coverage
         run: |
           echo '```diff' > ${{ env.COVERAGE_DIFF_FILE }}
-          diff --suppress-common-lines --color='never' ${{ env.PR_COVERAGE_SUMMARY_FILE }} ${{ env.MAIN_COVERAGE_FILE }} >> ${{ env.COVERAGE_DIFF_FILE }} || true
+          diff --suppress-common-lines --color='never' ${{ env.MAIN_COVERAGE_FILE }} ${{ env.PR_COVERAGE_SUMMARY_FILE }} >> ${{ env.COVERAGE_DIFF_FILE }} || true
           echo '```' >> ${{ env.COVERAGE_DIFF_FILE }}
           cat ${{ env.COVERAGE_DIFF_FILE }}
 
-      # # Post comment
+      # Post comment
 
       - name: Comment coverage
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           path: "${{ env.COVERAGE_DIFF_FILE }}"
 
-      # # Archive coverage
+      # Archive coverage
 
       - name: Rename coverage file
         if: github.ref == 'refs/heads/main'
