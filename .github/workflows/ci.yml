@@ -8,6 +8,10 @@ on:
 
 env:
   COVERAGE_DIR: "target/coverage"
+  PR_COVERAGE_FILE: "coverage-report.log"
+  PR_COVERAGE_SUMMARY_FILE: "branch-coverage.log"
+  COVERAGE_DIFF_FILE: "diff.log"
+  MAIN_COVERAGE_FILE: "main-coverage.log"
 
 jobs:
   test:
@@ -30,29 +34,33 @@ jobs:
       - name: Coverage report
         id: report-coverage
         run: |
-          lein cloverage --no-colorize -o "${{ env.COVERAGE_DIR }}" > coverage-report.log
+          lein cloverage --no-colorize -o "${{ env.COVERAGE_DIR }}" > ${{ env.PR_COVERAGE_FILE }}
 
       - name: Diff coverage
         id: diff-coverage
         run: |
-          cat coverage-report.log | sed -n '/Writing HTML report to/,$p' | sed '1,2d' > branch.log
-          echo '```diff' > diff.log
-          diff --suppress-common-lines --color='never' branch.log dev-resources/master.log >> diff.log || true
-          echo '```' >> diff.log
-          cat diff.log
+          cat ${{ env.PR_COVERAGE_FILE }} | sed -n '/Writing HTML report to/,$p' | sed '1,2d' > ${{ env.PR_COVERAGE_SUMMARY_FILE }}
+          echo '```diff' > ${{ env.COVERAGE_DIFF_FILE }}
+          diff --suppress-common-lines --color='never' ${{ env.PR_COVERAGE_SUMMARY_FILE }} ${{ env.MAIN_COVERAGE_FILE }} >> ${{ env.COVERAGE_DIFF_FILE }} || true
+          echo '```' >> ${{ env.COVERAGE_DIFF_FILE }}
+          cat ${{ env.COVERAGE_DIFF_FILE }}
 
       # Post comment
 
       - name: Comment coverage
         uses: marocchino/sticky-pull-request-comment@v2
         with:
-          path: diff.log
+          path: "${{ env.COVERAGE_DIFF_FILE }}"
 
       # Archive coverage
+
+      - name: Rename coverage file
+        if: github.ref == 'refs/heads/main'
+        run: mv "${{ env.PR_COVERAGE_SUMMARY_FILE }}" "${{ env.MAIN_COVERAGE_FILE }}"
 
       - name: Upload coverage
         if: github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v3
         with:
-          name: main-coverage
-          path: "branch.log"
+          name: "${{ env.MAIN_COVERAGE_FILE }}"
+          path: "${{ env.MAIN_COVERAGE_FILE }}"
