@@ -19,6 +19,13 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      # Download main branch coverage
+
+      - name: Download main coverage artifact
+        run: gh run download -n ${{ env.MAIN_COVERAGE_FILE }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       # Prepare library
 
       - uses: actions/setup-java@v3
@@ -35,13 +42,13 @@ jobs:
         id: report-coverage
         run: |
           lein cloverage --no-colorize -o "${{ env.COVERAGE_DIR }}" > ${{ env.PR_COVERAGE_FILE }}
+          cat ${{ env.PR_COVERAGE_FILE }} | sed -n '/Writing HTML report to/,$p' | sed '1,2d' > ${{ env.PR_COVERAGE_SUMMARY_FILE }}
 
       - name: Diff coverage
         id: diff-coverage
         run: |
-          cat ${{ env.PR_COVERAGE_FILE }} | sed -n '/Writing HTML report to/,$p' | sed '1,2d' > ${{ env.PR_COVERAGE_SUMMARY_FILE }}
           echo '```diff' > ${{ env.COVERAGE_DIFF_FILE }}
-          diff --suppress-common-lines --color='never' ${{ env.PR_COVERAGE_SUMMARY_FILE }} ${{ env.MAIN_COVERAGE_FILE }} >> ${{ env.COVERAGE_DIFF_FILE }} || true
+          diff --suppress-common-lines --color='never' ${{ env.MAIN_COVERAGE_FILE }} ${{ env.PR_COVERAGE_SUMMARY_FILE }} >> ${{ env.COVERAGE_DIFF_FILE }} || true
           echo '```' >> ${{ env.COVERAGE_DIFF_FILE }}
           cat ${{ env.COVERAGE_DIFF_FILE }}
 
