@@ -15,56 +15,5 @@ env:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      # Download main branch coverage
-
-      - name: Download main coverage artifact
-        run: gh run download -n ${{ env.MAIN_COVERAGE_FILE }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # Prepare library
-
-      - uses: actions/setup-java@v3
-        with:
-          distribution: 'zulu'
-          java-version: '8'
-      - uses: DeLaGuardo/setup-clojure@10.2
-        with:
-          lein: 2.9.8
-
-      # Coverage
-
-      - name: Calculate coverage of this branch
-        run: |
-          lein cloverage --no-colorize -o "${{ env.COVERAGE_DIR }}" > ${{ env.PR_COVERAGE_FILE }}
-          cat ${{ env.PR_COVERAGE_FILE }} | sed -n '/Writing HTML report to/,$p' | sed '1,2d' > ${{ env.PR_COVERAGE_SUMMARY_FILE }}
-
-      - name: Create coverage diff file
-        run: |
-          echo '```diff' > ${{ env.COVERAGE_DIFF_FILE }}
-          diff --suppress-common-lines --color='never' ${{ env.MAIN_COVERAGE_FILE }} ${{ env.PR_COVERAGE_SUMMARY_FILE }} >> ${{ env.COVERAGE_DIFF_FILE }} || true
-          echo '```' >> ${{ env.COVERAGE_DIFF_FILE }}
-
-      # Post comment
-
-      - name: Comment coverage diff file
-        uses: marocchino/sticky-pull-request-comment@v2
-        with:
-          path: "${{ env.COVERAGE_DIFF_FILE }}"
-
-      # Archive coverage of main branch
-
-      - name: Rename coverage file
-        if: github.ref == 'refs/heads/main'
-        run: mv "${{ env.PR_COVERAGE_SUMMARY_FILE }}" "${{ env.MAIN_COVERAGE_FILE }}"
-
-      - name: Upload coverage file
-        if: github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v3
-        with:
-          name: "${{ env.MAIN_COVERAGE_FILE }}"
-          path: "${{ env.MAIN_COVERAGE_FILE }}"
+    uses: blue0513/cloverage-action/.github/workflows/ci.yml@feature/reusable-workflow
+    secrets: inherit
