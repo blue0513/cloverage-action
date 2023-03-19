@@ -44,3 +44,12 @@ jobs:
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           path: diff.log
+
+      # Archive coverage
+          
+      - name: Upload coverage
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v3
+        with:
+          name: main-coverage
+          path: "branch.log"
