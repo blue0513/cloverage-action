@@ -13,6 +13,9 @@ env:
   PR_COVERAGE_SUMMARY_FILE: "branch-coverage.log"
   COVERAGE_DIFF_FILE: "diff.log"
   MAIN_COVERAGE_FILE: "main-coverage.log"
+  HTML_DIR: "report-output-directory"
+  BUCKET: "blue-coverage-report"
+  REGION: "ap-northeast-1"
 
 jobs:
   test:
@@ -29,13 +32,30 @@ jobs:
       - uses: DeLaGuardo/setup-clojure@10.2
         with:
           lein: 2.9.8
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
 
       # Coverage
 
       - name: Calculate coverage of this branch
         run: |
-          lein cloverage --no-colorize -o "${{ env.COVERAGE_DIR }}" > ${{ env.PR_COVERAGE_FILE }}
+          lein cloverage --lcov --no-colorize -o "${{ env.COVERAGE_DIR }}" > ${{ env.PR_COVERAGE_FILE }}
           cat ${{ env.PR_COVERAGE_FILE }} | sed -n '/Writing HTML report to/,$p' | sed '1,2d' > ${{ env.PR_COVERAGE_SUMMARY_FILE }}
+
+      # lcov viewer
+
+      - name: Create lcov html
+        run: |
+          npm ci
+          npx lcov-viewer lcov -o "${{ env.HTML_DIR }}" "${{ env.COVERAGE_DIR }}/lcov.info"
+
+      - name: Upload html to S3
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          aws s3 cp --region ${{ env.REGION }} --recursive "${{ env.HTML_DIR }}/" "s3://${{ env.BUCKET }}/${{ github.run_id }}/"
 
       # Archive coverage of main branch
 
@@ -68,7 +88,9 @@ jobs:
       - name: Create coverage diff file
         if: github.ref != 'refs/heads/main' && steps.check_files.outputs.files_exists == 'true'
         run: |
-          echo '```diff' > ${{ env.COVERAGE_DIFF_FILE }}
+          echo "[Full Coverage Report](https://${{ env.BUCKET }}.s3.${{ env.REGION }}.amazonaws.com/${{ github.run_id}}/index.html)" >> ${{ env.COVERAGE_DIFF_FILE }}
+          echo "" >> ${{ env.COVERAGE_DIFF_FILE }}
+          echo '```diff' >> ${{ env.COVERAGE_DIFF_FILE }}
           diff --suppress-common-lines --color='never' ${{ env.MAIN_COVERAGE_FILE }} ${{ env.PR_COVERAGE_SUMMARY_FILE }} >> ${{ env.COVERAGE_DIFF_FILE }} || true
           echo '```' >> ${{ env.COVERAGE_DIFF_FILE }}
 
