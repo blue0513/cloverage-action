@@ -12,6 +12,8 @@ provider "aws" {
 
 resource "aws_s3_bucket" "coverage-report" {
   bucket = local.bucket_name
+
+  force_destroy = true
 }
 
 resource "aws_s3_bucket_policy" "s3_bucket_policy" {
