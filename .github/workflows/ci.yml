@@ -29,6 +29,9 @@ jobs:
       - uses: DeLaGuardo/setup-clojure@10.2
         with:
           lein: 2.9.8
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
 
       # Coverage
 
@@ -37,6 +40,11 @@ jobs:
           lein cloverage --no-colorize -o "${{ env.COVERAGE_DIR }}" > ${{ env.PR_COVERAGE_FILE }}
           cat ${{ env.PR_COVERAGE_FILE }} | sed -n '/Writing HTML report to/,$p' | sed '1,2d' > ${{ env.PR_COVERAGE_SUMMARY_FILE }}
 
+      - name: Create lcov html
+        run: |
+          npm ci
+          npx lcov-viewer lcov -o ./report-output-directory "${{ env.COVERAGE_DIR }}/lcov.info"
+          
       # Archive coverage of main branch
 
       - name: Rename coverage file

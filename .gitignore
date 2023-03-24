@@ -1,3 +1,11 @@
 target/
 .cpcache/
 .lein-failures
+
+node_modules
+
+*.tfstate.*
+*.tfstate
+terraform/terraform.tfvars
+terraform/.terraform.lock.hcl
+terraform/.terraform/*
