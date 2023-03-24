@@ -15,6 +15,7 @@ env:
   MAIN_COVERAGE_FILE: "main-coverage.log"
   HTML_DIR: "report-output-directory"
   BUCKET: "blue-coverage-report"
+  REGION: "ap-northeast-1"
 
 jobs:
   test:
@@ -54,7 +55,7 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
-          aws s3 cp --region ap-northeast-1 "${{ env.HTML_DIR }}/" "s3://${{ env.BUCKET }}/${{ github.run_id }}/"
+          aws s3 cp --region ${{ env.REGION }} --recursive "${{ env.HTML_DIR }}/" "s3://${{ env.BUCKET }}/${{ github.run_id }}/"
 
       # Archive coverage of main branch
 
