@@ -13,6 +13,7 @@ env:
   PR_COVERAGE_SUMMARY_FILE: "branch-coverage.log"
   COVERAGE_DIFF_FILE: "diff.log"
   MAIN_COVERAGE_FILE: "main-coverage.log"
+  HTML_DIR: "report-output-directory"
 
 jobs:
   test:
@@ -40,11 +41,20 @@ jobs:
           lein cloverage --lcov --no-colorize -o "${{ env.COVERAGE_DIR }}" > ${{ env.PR_COVERAGE_FILE }}
           cat ${{ env.PR_COVERAGE_FILE }} | sed -n '/Writing HTML report to/,$p' | sed '1,2d' > ${{ env.PR_COVERAGE_SUMMARY_FILE }}
 
+      # lcov viewer
+
       - name: Create lcov html
         run: |
           npm ci
-          npx lcov-viewer lcov -o ./report-output-directory "${{ env.COVERAGE_DIR }}/lcov.info"
-          
+          npx lcov-viewer lcov -o "${{ env.HTML_DIR }}" "${{ env.COVERAGE_DIR }}/lcov.info"
+
+      - name: Upload html to S3
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          aws s3 cp --recursive --region ap-northeast-1 "${{ env.HTML_DIR }}" "s3://${{ env.bucket }}/${{ github.run_id }}"
+
       # Archive coverage of main branch
 
       - name: Rename coverage file
