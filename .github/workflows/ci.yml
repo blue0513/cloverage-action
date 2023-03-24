@@ -88,7 +88,9 @@ jobs:
       - name: Create coverage diff file
         if: github.ref != 'refs/heads/main' && steps.check_files.outputs.files_exists == 'true'
         run: |
-          echo '```diff' > ${{ env.COVERAGE_DIFF_FILE }}
+          echo "[Full Coverage Report](https://${{ env.BUCKET }}.s3.${{ env.REGION }}.amazonaws.com/${{ github.run_id}}/index.html)" >> ${{ env.COVERAGE_DIFF_FILE }}
+          echo "" >> ${{ env.COVERAGE_DIFF_FILE }}
+          echo '```diff' >> ${{ env.COVERAGE_DIFF_FILE }}
           diff --suppress-common-lines --color='never' ${{ env.MAIN_COVERAGE_FILE }} ${{ env.PR_COVERAGE_SUMMARY_FILE }} >> ${{ env.COVERAGE_DIFF_FILE }} || true
           echo '```' >> ${{ env.COVERAGE_DIFF_FILE }}
 
