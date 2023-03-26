@@ -85,8 +85,8 @@ jobs:
         if: steps.check_files.outputs.files_exists == 'true'
         run: |
           [ -n "${{ needs.coverage.outputs.s3_url }}" ] && URL="[Full Coverage Report](${{ needs.coverage.outputs.s3_url }})"
-          SUMMARY_TABLE=$(docker run --rm -v ${PWD}:/lcov-compare/lcovs ghcr.io/blue0513/cloverage-action-lcov-compare:main -b lcovs/${{ env.MAIN_COVERAGE_FILE }} -t lcovs/${{ env.COVERAGE_DIR }}/lcov.info -o table -c line --onlySummary)
-          DETAIL_TABLE=$( docker run --rm -v ${PWD}:/lcov-compare/lcovs ghcr.io/blue0513/cloverage-action-lcov-compare:main -b lcovs/${{ env.MAIN_COVERAGE_FILE }} -t lcovs/${{ env.COVERAGE_DIR }}/lcov.info -o table -c line)
+          SUMMARY_TABLE=$(docker run --rm -v ${PWD}:/lcov-compare/lcovs ghcr.io/blue0513/cloverage-action-lcov-compare:main -b lcovs/${{ env.MAIN_COVERAGE_FILE }} -t lcovs/${{ env.COVERAGE_DIR }}/lcov.info -o table -c line --icon --onlySummary)
+          DETAIL_TABLE=$( docker run --rm -v ${PWD}:/lcov-compare/lcovs ghcr.io/blue0513/cloverage-action-lcov-compare:main -b lcovs/${{ env.MAIN_COVERAGE_FILE }} -t lcovs/${{ env.COVERAGE_DIR }}/lcov.info -o table -c line --icon)
 
           echo "## Coverage Report"                         > ${{ env.COVERAGE_DIFF_FILE }}
           echo "${URL}"                                    >> ${{ env.COVERAGE_DIFF_FILE }}
