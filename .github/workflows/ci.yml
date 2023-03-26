@@ -5,26 +5,21 @@ on:
   push:
     branches:
       - 'main'
+      - 'master'
   pull_request:
 
 env:
-  COVERAGE_DIR: "target/coverage"
-  PR_COVERAGE_FILE: "coverage-report.log"
-  PR_COVERAGE_SUMMARY_FILE: "branch-coverage.log"
-  COVERAGE_DIFF_FILE: "diff.log"
-  MAIN_COVERAGE_FILE: "main-coverage.log"
-  HTML_DIR: "report-output-directory"
   BUCKET: "blue-coverage-report"
   REGION: "ap-northeast-1"
+  COVERAGE_DIR: "target/coverage"
+  PR_COVERAGE_FILE: "coverage-report"
+  MAIN_COVERAGE_FILE: "base-coverage-report"
 
 jobs:
-  test:
+  coverage:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
-      # Prepare library
-
       - uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
@@ -35,69 +30,97 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 16
-
-      # Coverage
+      - run: npm ci
 
       - name: Calculate coverage of this branch
         run: |
-          lein cloverage --lcov --no-colorize -o "${{ env.COVERAGE_DIR }}" > ${{ env.PR_COVERAGE_FILE }}
-          cat ${{ env.PR_COVERAGE_FILE }} | sed -n '/Writing HTML report to/,$p' | sed '1,2d' > ${{ env.PR_COVERAGE_SUMMARY_FILE }}
-
-      # lcov viewer
-
-      - name: Create lcov html
-        run: |
-          npm ci
-          npx lcov-viewer lcov -o "${{ env.HTML_DIR }}" "${{ env.COVERAGE_DIR }}/lcov.info"
+          lein cloverage --lcov --no-colorize -o "${{ env.COVERAGE_DIR }}"
 
       - name: Upload html to S3
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          HTML_DIR: "report-output"
         run: |
+          npx lcov-viewer lcov -o "${{ env.HTML_DIR }}" "${{ env.COVERAGE_DIR }}/lcov.info"
           aws s3 cp --region ${{ env.REGION }} --recursive "${{ env.HTML_DIR }}/" "s3://${{ env.BUCKET }}/${{ github.run_id }}/"
 
-      # Archive coverage of main branch
-
-      - name: Rename coverage file
-        if: github.ref == 'refs/heads/main'
-        run: mv "${{ env.PR_COVERAGE_SUMMARY_FILE }}" "${{ env.MAIN_COVERAGE_FILE }}"
-
-      - name: Upload coverage file
-        if: github.ref == 'refs/heads/main'
+      - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
-          name: "${{ env.MAIN_COVERAGE_FILE }}"
-          path: "${{ env.MAIN_COVERAGE_FILE }}"
+          name: "${{ env.PR_COVERAGE_FILE }}-${{ github.run_id }}"
+          path: "${{ env.COVERAGE_DIR }}/lcov.info"
 
-      # Download main branch coverage and Calculate Coverage diff
+  coverage-diff:
+    if: github.ref != 'refs/heads/main'
+    needs: [coverage]
+    runs-on: ubuntu-latest
+    env:
+      COVERAGE_DIFF_FILE: "coverate-diff.log"
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - run: npm ci
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: "${{ env.PR_COVERAGE_FILE }}-${{ github.run_id }}"
+          path: "${{ env.COVERAGE_DIR }}"
 
       - name: Download main coverage artifact
-        if: github.ref != 'refs/heads/main'
         run: gh run download -n ${{ env.MAIN_COVERAGE_FILE }} || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check coverage file existence
-        if: github.ref != 'refs/heads/main'
         id: check_files
         uses: andstor/file-existence-action@v2
         with:
-          files: "${{ env.MAIN_COVERAGE_FILE }}, ${{ env.PR_COVERAGE_SUMMARY_FILE }}"
+          files: "${{ env.MAIN_COVERAGE_FILE }}, ${{ env.COVERAGE_DIR }}/lcov.info"
 
-      - name: Create coverage diff file
-        if: github.ref != 'refs/heads/main' && steps.check_files.outputs.files_exists == 'true'
+      - name: Create coverage diff comment
+        if: steps.check_files.outputs.files_exists == 'true'
         run: |
-          echo "[Full Coverage Report](https://${{ env.BUCKET }}.s3.${{ env.REGION }}.amazonaws.com/${{ github.run_id}}/index.html)" >> ${{ env.COVERAGE_DIFF_FILE }}
-          echo "" >> ${{ env.COVERAGE_DIFF_FILE }}
-          echo '```diff' >> ${{ env.COVERAGE_DIFF_FILE }}
-          diff --suppress-common-lines --color='never' ${{ env.MAIN_COVERAGE_FILE }} ${{ env.PR_COVERAGE_SUMMARY_FILE }} >> ${{ env.COVERAGE_DIFF_FILE }} || true
-          echo '```' >> ${{ env.COVERAGE_DIFF_FILE }}
+          URL="[Full Coverage Report](https://${{ env.BUCKET }}.s3.${{ env.REGION }}.amazonaws.com/${{ github.run_id}}/index.html)"
+          PR_TOTAL=$(npx lcov-total ${{ env.COVERAGE_DIR }}/lcov.info)
+          BASE_TOTAL=$(npx lcov-total ${{ env.MAIN_COVERAGE_FILE }})
+          DETAIL_TABLE=$(node main.js -b ${{ env.MAIN_COVERAGE_FILE }} -t ${{ env.COVERAGE_DIR }}/lcov.info --table --lines --icon)
 
-      # Post comment
+          echo "# Change Coverage Report"                   > ${{ env.COVERAGE_DIFF_FILE }}
+          echo "${URL}"                                    >> ${{ env.COVERAGE_DIFF_FILE }}
+          echo ""                                          >> ${{ env.COVERAGE_DIFF_FILE }}
+          echo "| PR          | Base branch   |"           >> ${{ env.COVERAGE_DIFF_FILE }}
+          echo "| ---         | ---           |"           >> ${{ env.COVERAGE_DIFF_FILE }}
+          echo "| ${PR_TOTAL} | ${BASE_TOTAL} |"           >> ${{ env.COVERAGE_DIFF_FILE }}
+          echo ""                                          >> ${{ env.COVERAGE_DIFF_FILE }}
+          echo "<details><summary>detail report</summary>" >> ${{ env.COVERAGE_DIFF_FILE }}
+          echo "${DETAIL_TABLE}"                           >> ${{ env.COVERAGE_DIFF_FILE }}
+          echo "</details>"                                >> ${{ env.COVERAGE_DIFF_FILE }}
+
+      - name: Console report
+        if: steps.check_files.outputs.files_exists == 'true'
+        run: cat ${{ env.COVERAGE_DIFF_FILE }}
 
       - name: Comment coverage diff file
-        if: github.ref != 'refs/heads/main' && steps.check_files.outputs.files_exists == 'true'
+        if: steps.check_files.outputs.files_exists == 'true'
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           path: "${{ env.COVERAGE_DIFF_FILE }}"
+
+  upload-base-coverage:
+    if: github.ref == 'refs/heads/main'
+    needs: [coverage-diff]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/download-artifact@v3
+        with:
+          name: "${{ env.PR_COVERAGE_FILE }}-${{ github.run_id }}"
+          path: "${{ env.COVERAGE_DIR }}"
+      - name: Upload coverage file
+        uses: actions/upload-artifact@v3
+        with:
+          name: "${{ env.MAIN_COVERAGE_FILE }}"
+          path: "${{ env.COVERAGE_DIR }}/lcov.info"
