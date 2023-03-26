@@ -9,7 +9,6 @@ on:
   pull_request:
 
 env:
-  BUCKET: "blue-coverage-report"
   REGION: "ap-northeast-1"
   COVERAGE_DIR: "target/coverage"
   PR_COVERAGE_FILE: "coverage-report"
@@ -18,6 +17,8 @@ env:
 jobs:
   coverage:
     runs-on: ubuntu-latest
+    outputs:
+      s3_url: ${{ steps.upload-s3.outputs.s3_url }}
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-java@v3
@@ -37,13 +38,17 @@ jobs:
           lein cloverage --lcov --no-colorize -o "${{ env.COVERAGE_DIR }}"
 
       - name: Upload html to S3
+        id: upload-s3
+        if: ${{ vars.S3_BUCKET_NAME != '' }}
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           HTML_DIR: "report-output"
         run: |
-          npx lcov-viewer lcov -o "${{ env.HTML_DIR }}" "${{ env.COVERAGE_DIR }}/lcov.info"
-          aws s3 cp --region ${{ env.REGION }} --recursive "${{ env.HTML_DIR }}/" "s3://${{ env.BUCKET }}/${{ github.run_id }}/"
+          npx lcov-viewer lcov "${{ env.COVERAGE_DIR }}/lcov.info" -o "${{ env.HTML_DIR }}"
+          aws s3 cp --region ${{ env.REGION }} --recursive "${{ env.HTML_DIR }}/" "s3://${{ vars.S3_BUCKET_NAME }}/${{ github.run_id }}/"
+          S3_URL="https://${{ vars.S3_BUCKET_NAME }}.s3.${{ env.REGION }}.amazonaws.com/${{ github.run_id}}/index.html"
+          echo "s3_url=${S3_URL}" >> $GITHUB_OUTPUT
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
@@ -53,7 +58,7 @@ jobs:
 
   coverage-diff:
     if: github.ref != 'refs/heads/main'
-    needs: [coverage]
+    needs: coverage
     runs-on: ubuntu-latest
     env:
       COVERAGE_DIFF_FILE: "coverate-diff.log"
@@ -83,19 +88,19 @@ jobs:
       - name: Create coverage diff comment
         if: steps.check_files.outputs.files_exists == 'true'
         run: |
-          URL="[Full Coverage Report](https://${{ env.BUCKET }}.s3.${{ env.REGION }}.amazonaws.com/${{ github.run_id}}/index.html)"
+          [ -n "${{ needs.coverage.outputs.s3_url }}" ] && URL="[Full Coverage Report](${{ needs.coverage.outputs.s3_url }})"
           PR_TOTAL=$(npx lcov-total ${{ env.COVERAGE_DIR }}/lcov.info)
           BASE_TOTAL=$(npx lcov-total ${{ env.MAIN_COVERAGE_FILE }})
           DETAIL_TABLE=$(node main.js -b ${{ env.MAIN_COVERAGE_FILE }} -t ${{ env.COVERAGE_DIR }}/lcov.info --table --lines --icon)
 
-          echo "# Change Coverage Report"                   > ${{ env.COVERAGE_DIFF_FILE }}
+          echo "## Coverage Report"                         > ${{ env.COVERAGE_DIFF_FILE }}
           echo "${URL}"                                    >> ${{ env.COVERAGE_DIFF_FILE }}
           echo ""                                          >> ${{ env.COVERAGE_DIFF_FILE }}
-          echo "| PR          | Base branch   |"           >> ${{ env.COVERAGE_DIFF_FILE }}
-          echo "| ---         | ---           |"           >> ${{ env.COVERAGE_DIFF_FILE }}
-          echo "| ${PR_TOTAL} | ${BASE_TOTAL} |"           >> ${{ env.COVERAGE_DIFF_FILE }}
+          echo "| Base branch   | PR branch     |"         >> ${{ env.COVERAGE_DIFF_FILE }}
+          echo "| ---           | ---           |"         >> ${{ env.COVERAGE_DIFF_FILE }}
+          echo "| ${BASE_TOTAL} | ${PR_TOTAL}   |"         >> ${{ env.COVERAGE_DIFF_FILE }}
           echo ""                                          >> ${{ env.COVERAGE_DIFF_FILE }}
-          echo "<details><summary>detail report</summary>" >> ${{ env.COVERAGE_DIFF_FILE }}
+          echo "<details><summary>report detail</summary>" >> ${{ env.COVERAGE_DIFF_FILE }}
           echo "${DETAIL_TABLE}"                           >> ${{ env.COVERAGE_DIFF_FILE }}
           echo "</details>"                                >> ${{ env.COVERAGE_DIFF_FILE }}
 
@@ -111,7 +116,7 @@ jobs:
 
   upload-base-coverage:
     if: github.ref == 'refs/heads/main'
-    needs: [coverage]
+    needs: coverage
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
