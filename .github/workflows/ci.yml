@@ -31,7 +31,6 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 16
-      - run: npm ci
 
       - name: Calculate coverage of this branch
         run: |
@@ -45,7 +44,8 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           HTML_DIR: "report-output"
         run: |
-          npx lcov-viewer lcov "${{ env.COVERAGE_DIR }}/lcov.info" -o "${{ env.HTML_DIR }}"
+          npm i @lcov-viewer/cli -g
+          lcov-viewer lcov "${{ env.COVERAGE_DIR }}/lcov.info" -o "${{ env.HTML_DIR }}"
           aws s3 cp --region ${{ env.REGION }} --recursive "${{ env.HTML_DIR }}/" "s3://${{ vars.S3_BUCKET_NAME }}/${{ github.run_id }}/"
           S3_URL="https://${{ vars.S3_BUCKET_NAME }}.s3.${{ env.REGION }}.amazonaws.com/${{ github.run_id}}/index.html"
           echo "s3_url=${S3_URL}" >> $GITHUB_OUTPUT
@@ -64,10 +64,6 @@ jobs:
       COVERAGE_DIFF_FILE: "coverate-diff.log"
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 16
-      - run: npm ci
 
       - uses: actions/download-artifact@v3
         with:
@@ -89,8 +85,8 @@ jobs:
         if: steps.check_files.outputs.files_exists == 'true'
         run: |
           [ -n "${{ needs.coverage.outputs.s3_url }}" ] && URL="[Full Coverage Report](${{ needs.coverage.outputs.s3_url }})"
-          SUMMARY_TABLE=$(node main.js -b ${{ env.MAIN_COVERAGE_FILE }} -t ${{ env.COVERAGE_DIR }}/lcov.info -o table -c line --icon --onlySummary)
-          DETAIL_TABLE=$( node main.js -b ${{ env.MAIN_COVERAGE_FILE }} -t ${{ env.COVERAGE_DIR }}/lcov.info -o table -c line --icon)
+          SUMMARY_TABLE=$(docker run --rm -v ${PWD}:/lcov-compare/lcovs ghcr.io/blue0513/cloverage-action-lcov-compare:feature-dockerize -b lcovs/${{ env.MAIN_COVERAGE_FILE }} -t lcovs/${{ env.COVERAGE_DIR }}/lcov.info -o table -c line --onlySummary)
+          DETAIL_TABLE=$( docker run --rm -v ${PWD}:/lcov-compare/lcovs ghcr.io/blue0513/cloverage-action-lcov-compare:feature-dockerize -b lcovs/${{ env.MAIN_COVERAGE_FILE }} -t lcovs/${{ env.COVERAGE_DIR }}/lcov.info -o table -c line)
 
           echo "## Coverage Report"                         > ${{ env.COVERAGE_DIFF_FILE }}
           echo "${URL}"                                    >> ${{ env.COVERAGE_DIFF_FILE }}
