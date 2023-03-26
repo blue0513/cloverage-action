@@ -119,8 +119,10 @@ jobs:
         with:
           name: "${{ env.PR_COVERAGE_FILE }}-${{ github.run_id }}"
           path: "${{ env.COVERAGE_DIR }}"
+      - name: Rename base coverage file
+        run: mv "${{ env.COVERAGE_DIR }}/lcov.info" "${{ env.MAIN_COVERAGE_FILE }}"
       - name: Upload coverage file
         uses: actions/upload-artifact@v3
         with:
           name: "${{ env.MAIN_COVERAGE_FILE }}"
-          path: "${{ env.COVERAGE_DIR }}/lcov.info"
+          path: "${{ env.MAIN_COVERAGE_FILE }}"
