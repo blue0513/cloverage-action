@@ -89,17 +89,12 @@ jobs:
         if: steps.check_files.outputs.files_exists == 'true'
         run: |
           [ -n "${{ needs.coverage.outputs.s3_url }}" ] && URL="[Full Coverage Report](${{ needs.coverage.outputs.s3_url }})"
-          PR_TOTAL=$(npx lcov-total ${{ env.COVERAGE_DIR }}/lcov.info)
-          BASE_TOTAL=$(npx lcov-total ${{ env.MAIN_COVERAGE_FILE }})
-          DETAIL_TABLE=$(node main.js -b ${{ env.MAIN_COVERAGE_FILE }} -t ${{ env.COVERAGE_DIR }}/lcov.info --table --lines --icon)
+          SUMMARY_TABLE=$(node main.js -b ${{ env.MAIN_COVERAGE_FILE }} -t ${{ env.COVERAGE_DIR }}/lcov.info -o table -c line --icon --onlySummary)
+          DETAIL_TABLE=$( node main.js -b ${{ env.MAIN_COVERAGE_FILE }} -t ${{ env.COVERAGE_DIR }}/lcov.info -o table -c line --icon)
 
           echo "## Coverage Report"                         > ${{ env.COVERAGE_DIFF_FILE }}
           echo "${URL}"                                    >> ${{ env.COVERAGE_DIFF_FILE }}
-          echo ""                                          >> ${{ env.COVERAGE_DIFF_FILE }}
-          echo "| Base branch   | PR branch     |"         >> ${{ env.COVERAGE_DIFF_FILE }}
-          echo "| ---           | ---           |"         >> ${{ env.COVERAGE_DIFF_FILE }}
-          echo "| ${BASE_TOTAL} | ${PR_TOTAL}   |"         >> ${{ env.COVERAGE_DIFF_FILE }}
-          echo ""                                          >> ${{ env.COVERAGE_DIFF_FILE }}
+          echo ${SUMMARY_TABLE}                            >> ${{ env.COVERAGE_DIFF_FILE }}
           echo "<details><summary>report detail</summary>" >> ${{ env.COVERAGE_DIFF_FILE }}
           echo "${DETAIL_TABLE}"                           >> ${{ env.COVERAGE_DIFF_FILE }}
           echo "</details>"                                >> ${{ env.COVERAGE_DIFF_FILE }}

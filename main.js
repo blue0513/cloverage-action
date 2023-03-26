@@ -1,6 +1,7 @@
 const source              = require("lcov-parse");
 const { program }         = require('commander');
-const { jsonToHTMLTable } = require('nested-json-to-table')
+const { jsonToHTMLTable } = require('nested-json-to-table');
+const lcovTotal           = require('lcov-total');
 
 const parseLCOV = content => new Promise((resolve, reject) => {
   source(content, (error, data) => {
@@ -14,7 +15,7 @@ const parseLCOV = content => new Promise((resolve, reject) => {
 
 const calcPercent = (json) => {
   try {
-    return parseFloat(json.hit / json.found).toFixed(2)
+    return parseFloat(json.hit / json.found)
   } catch {
     return 0
   }
@@ -31,9 +32,13 @@ const buildSummary = (lcovJson) => {
   })
 }
 
+const coveragePercentNum = (num) => {
+  return ((num ?? 0) * 100).toFixed(2)
+}
+
 const calcDiff = (base, target, coverageTarget) => {
-  const baseCoverage   = base?.[coverageTarget] ?? 0
-  const targetCoverage = target?.[coverageTarget] ?? 0
+  const baseCoverage   = coveragePercentNum(base?.[coverageTarget])
+  const targetCoverage = coveragePercentNum(target?.[coverageTarget])
   return parseFloat(targetCoverage - baseCoverage).toFixed(2)
 }
 
@@ -41,18 +46,18 @@ const resultFormat = (filename, base, target) => {
   return {
     filename,
     lines: {
-      base: base?.lines ?? 0,
-      target: target?.lines ?? 0,
+      base: coveragePercentNum(base?.lines),
+      target: coveragePercentNum(target?.lines),
       diff: calcDiff(base, target, "lines")
     },
     branches: {
-      base: base?.branches ?? 0,
-      target: target?.branches ?? 0,
+      base: coveragePercentNum(base?.branches),
+      target: coveragePercentNum(target?.branches),
       diff: calcDiff(base, target, "branches")
     },
     functions: {
-      base: base?.functions ?? 0,
-      target: target?.functions ?? 0,
+      base: coveragePercentNum(base?.functions),
+      target: coveragePercentNum(target?.functions),
       diff: calcDiff(base, target, "functions")
     }
   }
@@ -81,16 +86,38 @@ const compareLcov = async (baseLcov, targetLcov) => {
   })
 }
 
-const decorate = (res, coverageTarget) => {
-  const diff = res[coverageTarget].diff
-  const icon = diff < 0 ? "⚠️" : diff > 0 ? "✅" : ""
-  res[coverageTarget].diff = diff.concat(icon)
+const decorateStr = (str) => {
+  const icon = str < 0 ? " ⚠️" : str > 0 ? " ✅" : ""
+  return str.concat(icon)
 }
 
 const decorates = (res) => {
-  decorate(res, "lines")
-  decorate(res, "branches")
-  decorate(res, "functions")
+  res.lines.diff     = decorateStr(res.lines.diff)
+  res.branches.diff  = decorateStr(res.branches.diff)
+  res.functions.diff = decorateStr(res.functions.diff)
+}
+
+const showOutput = (summaryJson, outputOption) => {
+  if (outputOption === "json") {
+    console.log(summaryJson)
+  }
+
+  if (outputOption === "table") {
+    console.log(jsonToHTMLTable(summaryJson))
+  }
+}
+
+const showSummary = (base, target, iconOption, outputOption) => {
+  const baseSummary   = lcovTotal(base)
+  const targetSummary = lcovTotal(target)
+  const rawDiff        = (targetSummary - baseSummary).toFixed(2)
+  const totalJson = {
+    baseSummary,
+    targetSummary,
+    diff: iconOption ? decorateStr(rawDiff) : rawDiff
+  }
+
+  showOutput([totalJson], outputOption)
 }
 
 ////////////
@@ -98,14 +125,13 @@ const decorates = (res) => {
 ////////////
 
 program
-  .requiredOption("-b, --base <lcov>")
-  .requiredOption("-t, --target <lcov>")
-  .option("--lines")
-  .option("--branches")
-  .option("--functions")
-  .option("--json")
-  .option("--table")
-  .option("--icon");
+  .description('Compare two lcov file and show coverage diff')
+  .requiredOption("-b, --base <lcov>", "[required] base lcov file")
+  .requiredOption("-t, --target <lcov>", "[required] target lcov file")
+  .requiredOption("-o, --outputFormat <outputFormat>", "[required] json | table")
+  .requiredOption("-c, --coverageTypes [coverageTypes...]", "[required] line | branch | function")
+  .option("--onlySummary", "show only summary")
+  .option("--icon", "decorate output")
 
 program.parse();
 const options = program.opts();
@@ -113,23 +139,21 @@ const options = program.opts();
 (async ()=>{
   const result = await compareLcov(options.base, options.target)
 
-  const { lines, branches, functions, icon } = options
+  const { outputFormat, coverageTypes, icon } = options
   const formattedResult = result.map((res) => {
     if (icon) { decorates(res) }
 
-    if (!lines)     { delete res.lines }
-    if (!branches)  { delete res.branches }
-    if (!functions) { delete res.functions }
+    if (!coverageTypes.includes("line"))      { delete res.lines }
+    if (!coverageTypes.includes("branch"))    { delete res.branches }
+    if (!coverageTypes.includes("functions")) { delete res.functions }
 
     return res
   })
 
-  if (options.json) {
-    console.log(formattedResult)
+  if (options.onlySummary) {
+    showSummary(options.base, options.target, icon, outputFormat)
+    return
   }
 
-  if (options.table) {
-    const tableHTML = jsonToHTMLTable(formattedResult)
-    console.log(tableHTML)
-  }
+  showOutput(formattedResult, outputFormat)
 })();
