@@ -33,8 +33,8 @@ const buildSummary = (lcovJson) => {
 }
 
 const calcDiff = (base, target, coverageTarget) => {
-  const baseCoverage   = base?.[coverageTarget] ?? 0
-  const targetCoverage = target?.[coverageTarget] ?? 0
+  const baseCoverage   = (base?.[coverageTarget] ?? 0) * 100
+  const targetCoverage = (target?.[coverageTarget] ?? 0) * 100
   return parseFloat(targetCoverage - baseCoverage).toFixed(2)
 }
 
@@ -42,18 +42,18 @@ const resultFormat = (filename, base, target) => {
   return {
     filename,
     lines: {
-      base: base?.lines ?? 0,
-      target: target?.lines ?? 0,
+      base: ((base?.lines ?? 0) * 100).toFixed(2),
+      target: ((target?.lines ?? 0) * 100).toFixed(2),
       diff: calcDiff(base, target, "lines")
     },
     branches: {
-      base: base?.branches ?? 0,
-      target: target?.branches ?? 0,
+      base: ((base?.branches ?? 0) * 100).toFixed(2),
+      target: ((target?.branches ?? 0) * 100).toFixed(2),
       diff: calcDiff(base, target, "branches")
     },
     functions: {
-      base: base?.functions ?? 0,
-      target: target?.functions ?? 0,
+      base: ((base?.functions ?? 0) * 100).toFixed(2),
+      target: ((target?.functions ?? 0) * 100).toFixed(2),
       diff: calcDiff(base, target, "functions")
     }
   }
@@ -83,7 +83,7 @@ const compareLcov = async (baseLcov, targetLcov) => {
 }
 
 const decorateStr = (str) => {
-  const icon = str < 0 ? "⚠️" : str > 0 ? "✅" : ""
+  const icon = str < 0 ? " ⚠️" : str > 0 ? " ✅" : ""
   return str.concat(icon)
 }
 
