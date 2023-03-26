@@ -24,3 +24,14 @@ jobs:
 ```
 
 Visit [the example repository](https://github.com/blue0513/use-cloverage-action) for more information.
+
+## Advanced Usage
+
+### Uploading Coverage to S3
+
+This workflow allows you to upload a coverage report created by [lcov-viewer](https://www.npmjs.com/package/@lcov-viewer/cli).
+By including the following secrets and variables, this workflow automatically uploads the coverage report:
+
+- Secret: `AWS_ACCESS_KEY_ID`
+- Secret: `AWS_SECRET_ACCESS_KEY`
+- Variable: `S3_BUCKET_NAME`
