@@ -121,12 +121,13 @@ const showSummary = (base, target, iconOption, outputOption) => {
 ////////////
 
 program
-  .requiredOption("-b, --base <lcov>")
-  .requiredOption("-t, --target <lcov>")
-  .requiredOption("-o, --outputFormat <outputFormat>")
-  .requiredOption("-c, --coverageTypes [coverageTypes...]")
-  .option("--onlySummary")
-  .option("--icon")
+  .description('Compare two lcov file and show coverage diff')
+  .requiredOption("-b, --base <lcov>", "[required] base lcov file")
+  .requiredOption("-t, --target <lcov>", "[required] target lcov file")
+  .requiredOption("-o, --outputFormat <outputFormat>", "[required] json | table")
+  .requiredOption("-c, --coverageTypes [coverageTypes...]", "[required] line | branch | function")
+  .option("--onlySummary", "show only summary")
+  .option("--icon", "decorate output")
 
 program.parse();
 const options = program.opts();
