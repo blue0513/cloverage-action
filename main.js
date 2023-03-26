@@ -15,7 +15,7 @@ const parseLCOV = content => new Promise((resolve, reject) => {
 
 const calcPercent = (json) => {
   try {
-    return parseFloat(json.hit / json.found).toFixed(2)
+    return parseFloat(json.hit / json.found)
   } catch {
     return 0
   }
@@ -32,9 +32,13 @@ const buildSummary = (lcovJson) => {
   })
 }
 
+const coveragePercentNum = (num) => {
+  return ((num ?? 0) * 100).toFixed(2)
+}
+
 const calcDiff = (base, target, coverageTarget) => {
-  const baseCoverage   = (base?.[coverageTarget] ?? 0) * 100
-  const targetCoverage = (target?.[coverageTarget] ?? 0) * 100
+  const baseCoverage   = coveragePercentNum(base?.[coverageTarget])
+  const targetCoverage = coveragePercentNum(target?.[coverageTarget])
   return parseFloat(targetCoverage - baseCoverage).toFixed(2)
 }
 
@@ -42,18 +46,18 @@ const resultFormat = (filename, base, target) => {
   return {
     filename,
     lines: {
-      base: ((base?.lines ?? 0) * 100).toFixed(2),
-      target: ((target?.lines ?? 0) * 100).toFixed(2),
+      base: coveragePercentNum(base?.lines),
+      target: coveragePercentNum(target?.lines),
       diff: calcDiff(base, target, "lines")
     },
     branches: {
-      base: ((base?.branches ?? 0) * 100).toFixed(2),
-      target: ((target?.branches ?? 0) * 100).toFixed(2),
+      base: coveragePercentNum(base?.branches),
+      target: coveragePercentNum(target?.branches),
       diff: calcDiff(base, target, "branches")
     },
     functions: {
-      base: ((base?.functions ?? 0) * 100).toFixed(2),
-      target: ((target?.functions ?? 0) * 100).toFixed(2),
+      base: coveragePercentNum(base?.functions),
+      target: coveragePercentNum(target?.functions),
       diff: calcDiff(base, target, "functions")
     }
   }
