@@ -2,6 +2,10 @@ name: CI
 
 on:
   workflow_call:
+    inputs:
+      uploaded-path:
+        required: true
+        type: string
   push:
     branches:
       - 'main'
@@ -32,7 +36,16 @@ jobs:
         with:
           node-version: 16
 
+      - run: echo ${{ github.event_name }}
+
+      - uses: actions/download-artifact@v3
+        if: ${{ github.event_name == 'workflow_call' }}
+        with:
+          name: ${inputs.uploaded-path}
+          path: "${{ env.COVERAGE_DIR }}"
+
       - name: Calculate coverage of this branch
+        if: ${{ github.event_name != 'workflow_call' }}
         run: |
           lein cloverage --lcov --no-colorize -o "${{ env.COVERAGE_DIR }}"
 
