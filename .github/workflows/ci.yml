@@ -42,7 +42,7 @@ jobs:
       - uses: actions/download-artifact@v3
         if: ${{ inputs.uploaded-path != '' }}
         with:
-          name: ${inputs.uploaded-path}
+          name: ${{ inputs.uploaded-path }}
           path: "${{ env.COVERAGE_DIR }}"
 
       - name: Calculate coverage of this branch
